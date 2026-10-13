@@ -85,7 +85,7 @@
 
             <!-- 補登日期 -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">補登日期</label>
+              <label class="block text-sm font-medium text-slate-700 mb-1">補登出勤日期</label>
               <input type="date" v-model="newRecord.date" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
 
@@ -139,7 +139,8 @@
             <table class="w-full text-left text-sm">
               <thead class="text-xs text-slate-400 border-b border-slate-100 pb-2 uppercase">
                 <tr>
-                  <th class="py-2">日期</th>
+                  <th class="py-2">補登日期</th>
+                  <th class="py-2">系統登錄時間</th>
                   <th class="py-2">同仁</th>
                   <th class="py-2">班別</th>
                   <th class="py-2">備註</th>
@@ -148,7 +149,8 @@
               </thead>
               <tbody class="divide-y divide-slate-100">
                 <tr v-for="r in sortedRecords.slice(0, 8)" :key="r.id" class="hover:bg-slate-50/50">
-                  <td class="py-3 font-medium text-slate-700">{{ r.date }}</td>
+                  <td class="py-3 font-semibold text-slate-800">{{ r.date }}</td>
+                  <td class="py-3 text-xs text-slate-500 font-mono">{{ r.createdAtDisplay }}</td>
                   <td class="py-3">
                     <div class="font-medium text-slate-800 flex items-center gap-1.5">
                       {{ getMember(r.memberId)?.nameZh || '已刪除成員' }}
@@ -277,7 +279,8 @@
             <table class="w-full text-left text-sm">
               <thead class="text-xs text-slate-400 border-b border-slate-100 pb-2">
                 <tr>
-                  <th class="py-2">補登日期</th>
+                  <th class="py-2">補登出勤日期</th>
+                  <th class="py-2">系統登錄時間</th>
                   <th class="py-2">同仁姓名</th>
                   <th class="py-2">電子信箱</th>
                   <th class="py-2">類別</th>
@@ -286,7 +289,8 @@
               </thead>
               <tbody class="divide-y divide-slate-100">
                 <tr v-for="r in filteredStats.records" :key="r.id">
-                  <td class="py-3 font-medium">{{ r.date }}</td>
+                  <td class="py-3 font-semibold text-slate-800">{{ r.date }}</td>
+                  <td class="py-3 text-xs text-slate-500 font-mono">{{ r.createdAtDisplay }}</td>
                   <td class="py-3 font-semibold text-slate-700">
                     <span class="flex items-center gap-1.5">
                       {{ getMember(r.memberId)?.nameZh || '已刪除成員' }} ({{ getMember(r.memberId)?.nameEn }})
@@ -338,7 +342,6 @@
               <span>團隊成員名單</span>
               <span class="text-xs text-slate-400 font-normal">共 {{ members.length }} 位</span>
             </h2>
-            <!-- 在職 / 離職 篩選按鈕 -->
             <div class="flex bg-slate-100 p-1 rounded-lg text-xs">
               <button 
                 type="button" 
@@ -366,7 +369,6 @@
                 <div class="text-xs text-slate-500">{{ m.email }}</div>
               </div>
               <div class="flex items-center gap-2">
-                <!-- 設為離職 / 恢復在職 按鈕 -->
                 <button 
                   @click="toggleMemberStatus(m)" 
                   :class="m.status === 'inactive' ? 'text-indigo-600 hover:text-indigo-800 bg-indigo-50 border-indigo-200' : 'text-amber-700 hover:text-amber-900 bg-amber-50 border-amber-200'"
@@ -425,10 +427,32 @@
         const members = ref([]);
         const records = ref([]);
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        // 取得本地今天日期 (yyyy-MM-dd)
+        const getTodayStr = () => {
+          const d = new Date();
+          const Y = d.getFullYear();
+          const M = String(d.getMonth() + 1).padStart(2, '0');
+          const D = String(d.getDate()).padStart(2, '0');
+          return `${Y}-${M}-${D}`;
+        };
+
+        // 時間格式化工具 (yyyy-MM-dd HH:mm)
+        const formatDateTime = (ts) => {
+          if (!ts) return '-';
+          const d = ts.toDate ? ts.toDate() : new Date(ts);
+          if (isNaN(d.getTime())) return '-';
+          const Y = d.getFullYear();
+          const M = String(d.getMonth() + 1).padStart(2, '0');
+          const D = String(d.getDate()).padStart(2, '0');
+          const h = String(d.getHours()).padStart(2, '0');
+          const m = String(d.getMinutes()).padStart(2, '0');
+          return `${Y}-${M}-${D} ${h}:${m}`;
+        };
+
+        // 補登表單物件 (預設值)
         const newRecord = ref({
           memberId: '',
-          date: todayStr,
+          date: getTodayStr(),
           type: '上班',
           note: ''
         });
@@ -448,7 +472,6 @@
           selectedQuarter: String(Math.floor(now.getMonth() / 3) + 1)
         });
 
-        // 在職與離職成員過濾
         const activeMembers = computed(() => members.value.filter(m => m.status !== 'inactive'));
         const inactiveMembers = computed(() => members.value.filter(m => m.status === 'inactive'));
         const filteredMembers = computed(() => {
@@ -462,13 +485,20 @@
             const membersSnap = await getDocs(collection(db, "members"));
             members.value = membersSnap.docs.map(d => ({ 
               id: d.id, 
-              status: 'active', // 舊資料無 status 欄位時預設 active
+              status: 'active',
               ...d.data() 
             }));
 
             const q = query(collection(db, "attendance_logs"), orderBy("date", "desc"));
             const recordsSnap = await getDocs(q);
-            records.value = recordsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            records.value = recordsSnap.docs.map(d => {
+              const data = d.data();
+              return { 
+                id: d.id, 
+                ...data,
+                createdAtDisplay: data.createdAtStr || formatDateTime(data.createdAt)
+              };
+            });
           } catch (err) {
             console.error("載入失敗：", err);
             alert("雲端資料讀取失敗，請確認 Firebase 安全性規則。");
@@ -483,7 +513,7 @@
           return [...records.value].sort((a, b) => new Date(b.date) - new Date(a.date));
         });
 
-        // 統計篩選核心
+        // 統計篩選
         const filteredStats = computed(() => {
           const { memberId, rangeType, selectedMonth, selectedYear, selectedQuarter } = statsFilter.value;
 
@@ -525,19 +555,31 @@
           }
           submitting.value = true;
           try {
+            const nowTime = new Date();
+            const nowTimeStr = formatDateTime(nowTime);
+
             const docRef = await addDoc(collection(db, "attendance_logs"), {
               memberId: newRecord.value.memberId,
               date: newRecord.value.date,
               type: newRecord.value.type,
               note: newRecord.value.note,
-              createdAt: serverTimestamp()
+              createdAt: serverTimestamp(),
+              createdAtStr: nowTimeStr
             });
 
             records.value.unshift({
               id: docRef.id,
+              createdAtDisplay: nowTimeStr,
               ...newRecord.value
             });
-            newRecord.value.note = '';
+
+            // 成功送出後，將表單全部恢復至預設狀態
+            newRecord.value = {
+              memberId: '',
+              date: getTodayStr(),
+              type: '上班',
+              note: ''
+            };
           } catch (err) {
             console.error(err);
             alert('寫入雲端失敗：' + err.message);
@@ -546,7 +588,6 @@
           }
         };
 
-        // 刪除補登紀錄
         const deleteRecord = async (id) => {
           if (!confirm('確定要從雲端刪除這筆紀錄嗎？')) return;
           try {
@@ -557,7 +598,6 @@
           }
         };
 
-        // 新增同仁名單至雲端
         const addMember = async () => {
           submitting.value = true;
           try {
@@ -582,7 +622,6 @@
           }
         };
 
-        // 切換同仁狀態（在職 / 離職）
         const toggleMemberStatus = async (m) => {
           const nextStatus = m.status === 'inactive' ? 'active' : 'inactive';
           const actionText = nextStatus === 'inactive' ? '設定為「已離職」' : '恢復為「在職」';
@@ -596,7 +635,6 @@
           }
         };
 
-        // 完全刪除同仁
         const deleteMember = async (id) => {
           if (!confirm('警告：若完全刪除，歷史補登紀錄中的人員名稱將無法識別！建議使用「設為離職」即可。\n\n確定仍要完全刪除嗎？')) return;
           try {
