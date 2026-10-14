@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>同仁出勤補登管理系統 (Firebase 雲端版)</title>
-  <!-- 網頁分頁圖示 (以 📅 為例) -->
+  <!-- Favicon icon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏰</text></svg>">
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Vue 3 CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <!-- Phosphor Icons (圖示庫) -->
+  <!-- Phosphor Icons library -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <style>
     [v-cloak] { display: none; }
@@ -19,7 +19,7 @@
 <body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased">
   <div id="app" v-cloak class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
     
-    <!-- 頂部標題與雲端狀態 -->
+    <!-- Top header and cloud connection status -->
     <header class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
       <div>
         <div class="flex items-center gap-2">
@@ -34,7 +34,7 @@
         <p class="text-sm text-slate-500 mt-1">主管自行記錄與月/季/年數據彙整平台</p>
       </div>
 
-      <!-- 分頁導覽按鈕 -->
+      <!-- Tab navigation buttons -->
       <nav class="flex space-x-1 bg-slate-200 p-1 rounded-xl w-full sm:w-auto">
         <button 
           @click="currentTab = 'record'"
@@ -57,23 +57,23 @@
       </nav>
     </header>
 
-    <!-- 載入中狀態提示 -->
+    <!-- Loading spinner indicator -->
     <div v-if="loading" class="text-center py-12">
       <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
       <p class="text-sm text-slate-500 mt-2">正在與 Google 雲端資料庫同步...</p>
     </div>
 
     <div v-else>
-      <!-- 1. 補登登記頁籤 -->
+      <!-- 1. Attendance entry tab -->
       <section v-if="currentTab === 'record'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- 登記表單 -->
+        <!-- Entry form container -->
         <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
             <i class="ph-bold ph-plus-circle text-indigo-600"></i> 新增補登
           </h2>
 
           <form @submit.prevent="submitRecord" class="space-y-4">
-            <!-- 選擇同仁 (僅列出在職同仁) -->
+            <!-- Select member (active members only) -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">選擇同仁</label>
               <select v-model="newRecord.memberId" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -85,34 +85,75 @@
               <p v-if="activeMembers.length === 0" class="text-xs text-amber-600 mt-1">目前尚無在職同仁名單，請先至「成員名單」分頁新增同仁。</p>
             </div>
 
-            <!-- 補登日期 -->
+            <!-- Attendance date -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">補登出勤日期</label>
               <input type="date" v-model="newRecord.date" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
 
-            <!-- 補登類別：上班 / 下班 -->
+            <!-- Attendance category selector -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">班別類別</label>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button 
                   type="button" 
-                  @click="newRecord.type = '上班'"
+                  @click="setType('上班')"
                   :class="newRecord.type === '上班' ? 'bg-emerald-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5">
+                  class="py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1">
                   <i class="ph-bold ph-sun"></i> 上班
                 </button>
                 <button 
                   type="button" 
-                  @click="newRecord.type = '下班'"
+                  @click="setType('下班')"
                   :class="newRecord.type === '下班' ? 'bg-amber-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5">
+                  class="py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1">
                   <i class="ph-bold ph-moon"></i> 下班
+                </button>
+                <button 
+                  type="button" 
+                  @click="setType('上下班')"
+                  :class="newRecord.type === '上下班' ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1">
+                  <i class="ph-bold ph-arrows-left-right"></i> 上下班
+                </button>
+                <button 
+                  type="button" 
+                  @click="setType('其他')"
+                  :class="newRecord.type === '其他' ? 'bg-purple-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1">
+                  <i class="ph-bold ph-clock"></i> 其他
                 </button>
               </div>
             </div>
 
-            <!-- 備註 -->
+            <!-- Punch time dynamic input fields -->
+            <div v-if="newRecord.type === '上班'">
+              <label class="block text-sm font-medium text-slate-700 mb-1">上班補登時間</label>
+              <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+
+            <div v-else-if="newRecord.type === '下班'">
+              <label class="block text-sm font-medium text-slate-700 mb-1">下班補登時間</label>
+              <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+
+            <div v-else-if="newRecord.type === '上下班'" class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">上班時間</label>
+                <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">下班時間</label>
+                <input type="time" v-model="newRecord.timeEnd" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+            </div>
+
+            <div v-else-if="newRecord.type === '其他'">
+              <label class="block text-sm font-medium text-slate-700 mb-1">補登時間</label>
+              <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+
+            <!-- Notes input -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">原因或備註 (選填)</label>
               <input type="text" v-model="newRecord.note" placeholder="例如：忘記刷卡、公出拜訪" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
@@ -124,7 +165,7 @@
           </form>
         </div>
 
-        <!-- 最近紀錄清單 -->
+        <!-- Recent records list -->
         <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
             <span class="flex items-center gap-2">
@@ -141,7 +182,7 @@
             <table class="w-full text-left text-sm">
               <thead class="text-xs text-slate-400 border-b border-slate-100 pb-2 uppercase">
                 <tr>
-                  <th class="py-2">補登日期</th>
+                  <th class="py-2">出勤日期與打卡</th>
                   <th class="py-2">系統登錄時間</th>
                   <th class="py-2">同仁</th>
                   <th class="py-2">班別</th>
@@ -151,7 +192,10 @@
               </thead>
               <tbody class="divide-y divide-slate-100">
                 <tr v-for="r in sortedRecords.slice(0, 8)" :key="r.id" class="hover:bg-slate-50/50">
-                  <td class="py-3 font-semibold text-slate-800">{{ r.date }}</td>
+                  <td class="py-3 font-semibold text-slate-800">
+                    <div>{{ r.date }}</div>
+                    <div v-if="r.timeStr" class="text-xs font-mono font-normal text-indigo-600">{{ r.timeStr }}</div>
+                  </td>
                   <td class="py-3 text-xs text-slate-500 font-mono">{{ r.createdAtDisplay }}</td>
                   <td class="py-3">
                     <div class="font-medium text-slate-800 flex items-center gap-1.5">
@@ -161,8 +205,18 @@
                     <div class="text-xs text-slate-400">{{ getMember(r.memberId)?.nameEn }}</div>
                   </td>
                   <td class="py-3">
-                    <span :class="r.type === '上班' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'" class="px-2.5 py-1 rounded-full text-xs font-semibold border inline-flex items-center gap-1">
-                      <i :class="r.type === '上班' ? 'ph-bold ph-sun' : 'ph-bold ph-moon'"></i>
+                    <span :class="{
+                      'bg-emerald-50 text-emerald-700 border-emerald-200': r.type === '上班',
+                      'bg-amber-50 text-amber-700 border-amber-200': r.type === '下班',
+                      'bg-indigo-50 text-indigo-700 border-indigo-200': r.type === '上下班',
+                      'bg-purple-50 text-purple-700 border-purple-200': r.type === '其他'
+                    }" class="px-2.5 py-1 rounded-full text-xs font-semibold border inline-flex items-center gap-1">
+                      <i :class="{
+                        'ph-bold ph-sun': r.type === '上班',
+                        'ph-bold ph-moon': r.type === '下班',
+                        'ph-bold ph-arrows-left-right': r.type === '上下班',
+                        'ph-bold ph-clock': r.type === '其他'
+                      }"></i>
                       {{ r.type }}
                     </span>
                   </td>
@@ -177,10 +231,10 @@
         </div>
       </section>
 
-      <!-- 2. 統計報表頁籤 (月 / 季 / 年) -->
+      <!-- 2. Statistics and reports tab -->
       <section v-if="currentTab === 'stats'" class="space-y-6">
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <!-- 統計對象選擇 -->
+          <!-- Filter target member -->
           <div class="w-full md:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <span class="text-sm font-semibold text-slate-600">統計對象：</span>
             <select v-model="statsFilter.memberId" class="w-full sm:w-auto rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
@@ -191,7 +245,7 @@
             </select>
           </div>
 
-          <!-- 維度切換：月、季、年 -->
+          <!-- Dimension switch buttons -->
           <div class="flex items-center bg-slate-100 p-1 rounded-xl w-full sm:w-auto justify-center">
             <button 
               @click="statsFilter.rangeType = 'month'"
@@ -207,7 +261,7 @@
               class="px-4 py-1.5 text-xs rounded-lg transition">年統計</button>
           </div>
 
-          <!-- 基準時間選擇 -->
+          <!-- Date range pickers -->
           <div class="flex items-center gap-2 w-full md:w-auto justify-end">
             <input 
               v-if="statsFilter.rangeType === 'month'" 
@@ -233,7 +287,7 @@
           </div>
         </div>
 
-        <!-- 數據卡片 -->
+        <!-- Metric summary cards -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
             <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl">
@@ -250,7 +304,7 @@
               <i class="ph-bold ph-sun"></i>
             </div>
             <div>
-              <div class="text-xs text-slate-400 font-medium">上班補登</div>
+              <div class="text-xs text-slate-400 font-medium">上班補登 (含上下班)</div>
               <div class="text-2xl font-bold text-emerald-700">{{ filteredStats.checkIn }} <span class="text-xs font-normal text-slate-400">次</span></div>
             </div>
           </div>
@@ -260,13 +314,13 @@
               <i class="ph-bold ph-moon"></i>
             </div>
             <div>
-              <div class="text-xs text-slate-400 font-medium">下班補登</div>
+              <div class="text-xs text-slate-400 font-medium">下班補登 (含上下班)</div>
               <div class="text-2xl font-bold text-amber-700">{{ filteredStats.checkOut }} <span class="text-xs font-normal text-slate-400">次</span></div>
             </div>
           </div>
         </div>
 
-        <!-- 區間明細列表 -->
+        <!-- Range detailed records table -->
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
             <span>區間補登紀錄明細</span>
@@ -281,7 +335,7 @@
             <table class="w-full text-left text-sm">
               <thead class="text-xs text-slate-400 border-b border-slate-100 pb-2">
                 <tr>
-                  <th class="py-2">補登出勤日期</th>
+                  <th class="py-2">出勤日期與打卡</th>
                   <th class="py-2">系統登錄時間</th>
                   <th class="py-2">同仁姓名</th>
                   <th class="py-2">電子信箱</th>
@@ -291,7 +345,10 @@
               </thead>
               <tbody class="divide-y divide-slate-100">
                 <tr v-for="r in filteredStats.records" :key="r.id">
-                  <td class="py-3 font-semibold text-slate-800">{{ r.date }}</td>
+                  <td class="py-3 font-semibold text-slate-800">
+                    <div>{{ r.date }}</div>
+                    <div v-if="r.timeStr" class="text-xs font-mono font-normal text-indigo-600">{{ r.timeStr }}</div>
+                  </td>
                   <td class="py-3 text-xs text-slate-500 font-mono">{{ r.createdAtDisplay }}</td>
                   <td class="py-3 font-semibold text-slate-700">
                     <span class="flex items-center gap-1.5">
@@ -301,7 +358,12 @@
                   </td>
                   <td class="py-3 text-slate-500 text-xs">{{ getMember(r.memberId)?.email }}</td>
                   <td class="py-3">
-                    <span :class="r.type === '上班' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'" class="px-2 py-0.5 rounded-md text-xs font-semibold">
+                    <span :class="{
+                      'bg-emerald-50 text-emerald-700': r.type === '上班',
+                      'bg-amber-50 text-amber-700': r.type === '下班',
+                      'bg-indigo-50 text-indigo-700': r.type === '上下班',
+                      'bg-purple-50 text-purple-700': r.type === '其他'
+                    }" class="px-2 py-0.5 rounded-md text-xs font-semibold">
                       {{ r.type }}
                     </span>
                   </td>
@@ -313,7 +375,7 @@
         </div>
       </section>
 
-      <!-- 3. 成員管理頁籤 -->
+      <!-- 3. Member management tab -->
       <section v-if="currentTab === 'members'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -387,7 +449,7 @@
 
   </div>
 
-  <!-- Firebase 模組載入與 Vue 邏輯 -->
+  <!-- Firebase modules and Vue logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
     import { 
@@ -403,7 +465,7 @@
       serverTimestamp 
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    // 您的 Firebase 金鑰配置
+    // Firebase configuration credentials
     const firebaseConfig = {
       apiKey: "AIzaSyAgK0oEQQU30yIibN9983MA_AhVuv7Ss_w",
       authDomain: "attendance-system-79158.firebaseapp.com",
@@ -429,7 +491,7 @@
         const members = ref([]);
         const records = ref([]);
 
-        // 取得本地今天日期 (yyyy-MM-dd)
+        // Get local date string (yyyy-MM-dd)
         const getTodayStr = () => {
           const d = new Date();
           const Y = d.getFullYear();
@@ -438,7 +500,7 @@
           return `${Y}-${M}-${D}`;
         };
 
-        // 時間格式化工具 (yyyy-MM-dd HH:mm)
+        // Format timestamp utility (yyyy-MM-dd HH:mm)
         const formatDateTime = (ts) => {
           if (!ts) return '-';
           const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -451,13 +513,33 @@
           return `${Y}-${M}-${D} ${h}:${m}`;
         };
 
-        // 補登表單物件 (預設值)
-        const newRecord = ref({
+        // Factory function for default record state
+        const getDefaultRecord = () => ({
           memberId: '',
           date: getTodayStr(),
           type: '上班',
+          time: '08:30',
+          timeEnd: '18:00',
           note: ''
         });
+
+        // Current record form state
+        const newRecord = ref(getDefaultRecord());
+
+        // Switch category and assign default times
+        const setType = (type) => {
+          newRecord.value.type = type;
+          if (type === '上班') {
+            newRecord.value.time = '08:30';
+          } else if (type === '下班') {
+            newRecord.value.time = '18:00';
+          } else if (type === '上下班') {
+            newRecord.value.time = '08:30';
+            newRecord.value.timeEnd = '18:00';
+          } else if (type === '其他') {
+            if (!newRecord.value.time) newRecord.value.time = '12:00';
+          }
+        };
 
         const newMember = ref({
           nameZh: '',
@@ -480,7 +562,7 @@
           return memberFilterTab.value === 'active' ? activeMembers.value : inactiveMembers.value;
         });
 
-        // 從雲端載入資料
+        // Load data from Cloud Firestore
         const loadCloudData = async () => {
           loading.value = true;
           try {
@@ -498,7 +580,8 @@
               return { 
                 id: d.id, 
                 ...data,
-                createdAtDisplay: data.createdAtStr || formatDateTime(data.createdAt)
+                createdAtDisplay: data.createdAtStr || formatDateTime(data.createdAt),
+                timeStr: data.timeStr || (data.type === '上班' ? '08:30' : (data.type === '下班' ? '18:00' : ''))
               };
             });
           } catch (err) {
@@ -515,7 +598,7 @@
           return [...records.value].sort((a, b) => new Date(b.date) - new Date(a.date));
         });
 
-        // 統計篩選
+        // Compute filtered statistics
         const filteredStats = computed(() => {
           const { memberId, rangeType, selectedMonth, selectedYear, selectedQuarter } = statsFilter.value;
 
@@ -538,8 +621,9 @@
             return true;
           });
 
-          const checkIn = filtered.filter(r => r.type === '上班').length;
-          const checkOut = filtered.filter(r => r.type === '下班').length;
+          // Count check-in and check-out occurrences (including both)
+          const checkIn = filtered.filter(r => r.type === '上班' || r.type === '上下班').length;
+          const checkOut = filtered.filter(r => r.type === '下班' || r.type === '上下班').length;
 
           return {
             total: filtered.length,
@@ -549,7 +633,7 @@
           };
         });
 
-        // 新增補登紀錄至雲端
+        // Submit attendance record to Firestore
         const submitRecord = async () => {
           if (!newRecord.value.memberId) {
             alert('請先選擇同仁！');
@@ -560,28 +644,31 @@
             const nowTime = new Date();
             const nowTimeStr = formatDateTime(nowTime);
 
-            const docRef = await addDoc(collection(db, "attendance_logs"), {
+            let formattedTimeStr = newRecord.value.time || '';
+            if (newRecord.value.type === '上下班') {
+              formattedTimeStr = `${newRecord.value.time || '08:30'} - ${newRecord.value.timeEnd || '18:00'}`;
+            }
+
+            const docData = {
               memberId: newRecord.value.memberId,
               date: newRecord.value.date,
               type: newRecord.value.type,
+              timeStr: formattedTimeStr,
               note: newRecord.value.note,
               createdAt: serverTimestamp(),
               createdAtStr: nowTimeStr
-            });
+            };
+
+            const docRef = await addDoc(collection(db, "attendance_logs"), docData);
 
             records.value.unshift({
               id: docRef.id,
               createdAtDisplay: nowTimeStr,
-              ...newRecord.value
+              ...docData
             });
 
-            // 成功送出後，將表單全部恢復至預設狀態
-            newRecord.value = {
-              memberId: '',
-              date: getTodayStr(),
-              type: '上班',
-              note: ''
-            };
+            // Reset form back to default state
+            newRecord.value = getDefaultRecord();
           } catch (err) {
             console.error(err);
             alert('寫入雲端失敗：' + err.message);
@@ -671,7 +758,8 @@
           deleteRecord,
           addMember,
           toggleMemberStatus,
-          deleteMember
+          deleteMember,
+          setType
         };
       }
     }).mount('#app');
