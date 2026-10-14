@@ -91,37 +91,37 @@
               <input type="date" v-model="newRecord.date" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
 
-            <!-- Attendance category selector -->
+            <!-- Attendance category selector (上下各兩個 2x2 排版) -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">班別類別</label>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div class="grid grid-cols-2 gap-2.5">
                 <button 
                   type="button" 
                   @click="setType('上班')"
-                  :class="newRecord.type === '上班' ? 'bg-emerald-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1">
-                  <i class="ph-bold ph-sun"></i> 上班
+                  :class="newRecord.type === '上班' ? 'bg-emerald-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                  <i class="ph-bold ph-sun text-base"></i> 上班
                 </button>
                 <button 
                   type="button" 
                   @click="setType('下班')"
-                  :class="newRecord.type === '下班' ? 'bg-amber-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1">
-                  <i class="ph-bold ph-moon"></i> 下班
+                  :class="newRecord.type === '下班' ? 'bg-amber-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                  <i class="ph-bold ph-moon text-base"></i> 下班
                 </button>
                 <button 
                   type="button" 
                   @click="setType('上下班')"
-                  :class="newRecord.type === '上下班' ? 'bg-indigo-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1">
-                  <i class="ph-bold ph-arrows-left-right"></i> 上下班
+                  :class="newRecord.type === '上下班' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                  <i class="ph-bold ph-arrows-left-right text-base"></i> 上下班
                 </button>
                 <button 
                   type="button" 
                   @click="setType('其他')"
-                  :class="newRecord.type === '其他' ? 'bg-purple-600 text-white font-semibold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1">
-                  <i class="ph-bold ph-clock"></i> 其他
+                  :class="newRecord.type === '其他' ? 'bg-purple-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                  class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                  <i class="ph-bold ph-clock text-base"></i> 其他
                 </button>
               </div>
             </div>
