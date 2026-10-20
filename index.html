@@ -4,13 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>同仁出勤補登管理系統 (Firebase 雲端版)</title>
-  <!-- Favicon icon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏰</text></svg>">
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Vue 3 CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-  <!-- Phosphor Icons library -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <style>
     [v-cloak] { display: none; }
@@ -18,440 +14,468 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen font-sans antialiased">
   <div id="app" v-cloak class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
-    
-    <!-- Top header and cloud connection status -->
-    <header class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
-      <div>
-        <div class="flex items-center gap-2">
-          <h1 class="text-2xl font-bold text-indigo-700 flex items-center gap-2">
-            <i class="ph-bold ph-calendar-check text-2xl"></i>
-            同仁出勤補登管理系統
-          </h1>
-          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Google 雲端連線中
-          </span>
+
+    <!-- 0. Google 登入介面 (未登入或非管理員時顯示) -->
+    <div v-if="!currentUser" class="min-h-[70vh] flex items-center justify-center">
+      <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 w-full max-w-md text-center">
+        <div class="inline-flex p-4 bg-indigo-50 text-indigo-600 rounded-2xl text-4xl mb-4">
+          <i class="ph-bold ph-shield-check"></i>
         </div>
-        <p class="text-sm text-slate-500 mt-1">主管自行記錄與月/季/年數據彙整平台</p>
+        <h2 class="text-2xl font-bold text-slate-800">主管專用出勤管理系統</h2>
+        <p class="text-sm text-slate-500 mt-1 mb-6">請使用經授權的 Google 帳戶登入後查看資料</p>
+
+        <div v-if="authError" class="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-600 font-medium text-left">
+          {{ authError }}
+        </div>
+
+        <button 
+          @click="loginWithGoogle" 
+          :disabled="authLoading" 
+          class="w-full bg-white hover:bg-slate-50 border border-slate-300 shadow-sm text-slate-700 font-medium py-3 px-4 rounded-xl transition flex items-center justify-center gap-3 disabled:opacity-50">
+          <svg class="w-5 h-5" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+          </svg>
+          <span>{{ authLoading ? '登入驗證中...' : '使用 Google 帳戶登入' }}</span>
+        </button>
       </div>
-
-      <!-- Tab navigation buttons -->
-      <nav class="flex space-x-1 bg-slate-200 p-1 rounded-xl w-full sm:w-auto">
-        <button 
-          @click="currentTab = 'record'"
-          :class="currentTab === 'record' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
-          class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
-          <i class="ph-bold ph-note-pencil"></i> 補登登記
-        </button>
-        <button 
-          @click="currentTab = 'stats'"
-          :class="currentTab === 'stats' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
-          class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
-          <i class="ph-bold ph-chart-bar"></i> 統計報表
-        </button>
-        <button 
-          @click="currentTab = 'members'"
-          :class="currentTab === 'members' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
-          class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
-          <i class="ph-bold ph-users"></i> 成員名單
-        </button>
-      </nav>
-    </header>
-
-    <!-- Loading spinner indicator -->
-    <div v-if="loading" class="text-center py-12">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
-      <p class="text-sm text-slate-500 mt-2">正在與 Google 雲端資料庫同步...</p>
     </div>
 
+    <!-- 登入成功後的主內容 -->
     <div v-else>
-      <!-- 1. Attendance entry tab -->
-      <section v-if="currentTab === 'record'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Entry form container -->
-        <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <i class="ph-bold ph-plus-circle text-indigo-600"></i> 新增補登
-          </h2>
+      <header class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-2xl font-bold text-indigo-700 flex items-center gap-2">
+              <i class="ph-bold ph-calendar-check text-2xl"></i>
+              同仁出勤補登管理系統
+            </h1>
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Google 授權已連線
+            </span>
+          </div>
+          <div class="flex items-center gap-3 text-xs text-slate-500 mt-1">
+            <span>登入者：{{ currentUser.displayName || currentUser.email }} ({{ currentUser.email }})</span>
+            <button @click="logout" class="text-rose-600 hover:underline flex items-center gap-0.5 font-medium">
+              <i class="ph-bold ph-sign-out"></i> 登出
+            </button>
+          </div>
+        </div>
 
-          <form @submit.prevent="submitRecord" class="space-y-4">
-            <!-- Select member (active members only) -->
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">選擇同仁</label>
-              <select v-model="newRecord.memberId" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                <option value="" disabled>請選擇同仁...</option>
-                <option v-for="m in activeMembers" :key="m.id" :value="m.id">
-                  {{ m.nameZh }} ({{ m.nameEn }})
-                </option>
-              </select>
-              <p v-if="activeMembers.length === 0" class="text-xs text-amber-600 mt-1">目前尚無在職同仁名單，請先至「成員名單」分頁新增同仁。</p>
-            </div>
+        <nav class="flex space-x-1 bg-slate-200 p-1 rounded-xl w-full sm:w-auto">
+          <button 
+            @click="currentTab = 'record'"
+            :class="currentTab === 'record' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+            class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
+            <i class="ph-bold ph-note-pencil"></i> 補登登記
+          </button>
+          <button 
+            @click="currentTab = 'stats'"
+            :class="currentTab === 'stats' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+            class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
+            <i class="ph-bold ph-chart-bar"></i> 統計報表
+          </button>
+          <button 
+            @click="currentTab = 'members'"
+            :class="currentTab === 'members' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'"
+            class="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
+            <i class="ph-bold ph-users"></i> 成員名單
+          </button>
+        </nav>
+      </header>
 
-            <!-- Attendance date -->
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">補登出勤日期</label>
-              <input type="date" v-model="newRecord.date" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-            </div>
+      <div v-if="loading" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
+        <p class="text-sm text-slate-500 mt-2">正在與 Google 雲端資料庫同步...</p>
+      </div>
 
-            <!-- Attendance category selector (上下各兩個 2x2 排版) -->
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">班別類別</label>
-              <div class="grid grid-cols-2 gap-2.5">
-                <button 
-                  type="button" 
-                  @click="setType('上班')"
-                  :class="newRecord.type === '上班' ? 'bg-emerald-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
-                  <i class="ph-bold ph-sun text-base"></i> 上班
-                </button>
-                <button 
-                  type="button" 
-                  @click="setType('下班')"
-                  :class="newRecord.type === '下班' ? 'bg-amber-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
-                  <i class="ph-bold ph-moon text-base"></i> 下班
-                </button>
-                <button 
-                  type="button" 
-                  @click="setType('上下班')"
-                  :class="newRecord.type === '上下班' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
-                  <i class="ph-bold ph-arrows-left-right text-base"></i> 上下班
-                </button>
-                <button 
-                  type="button" 
-                  @click="setType('其他')"
-                  :class="newRecord.type === '其他' ? 'bg-purple-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                  class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
-                  <i class="ph-bold ph-clock text-base"></i> 其他
-                </button>
-              </div>
-            </div>
+      <div v-else>
+        <!-- 1. 補登登記分頁 -->
+        <section v-if="currentTab === 'record'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <i class="ph-bold ph-plus-circle text-indigo-600"></i> 新增補登
+            </h2>
 
-            <!-- Punch time dynamic input fields -->
-            <div v-if="newRecord.type === '上班'">
-              <label class="block text-sm font-medium text-slate-700 mb-1">上班補登時間</label>
-              <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-            </div>
-
-            <div v-else-if="newRecord.type === '下班'">
-              <label class="block text-sm font-medium text-slate-700 mb-1">下班補登時間</label>
-              <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-            </div>
-
-            <div v-else-if="newRecord.type === '上下班'" class="grid grid-cols-2 gap-2">
+            <form @submit.prevent="submitRecord" class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">上班時間</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">選擇同仁</label>
+                <select v-model="newRecord.memberId" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <option value="" disabled>請選擇同仁...</option>
+                  <option v-for="m in activeMembers" :key="m.id" :value="m.id">
+                    {{ m.nameZh }} ({{ m.nameEn }})
+                  </option>
+                </select>
+                <p v-if="activeMembers.length === 0" class="text-xs text-amber-600 mt-1">目前尚無在職同仁名單，請先至「成員名單」分頁新增同仁。</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">補登出勤日期</label>
+                <input type="date" v-model="newRecord.date" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">班別類別</label>
+                <div class="grid grid-cols-2 gap-2.5">
+                  <button 
+                    type="button" 
+                    @click="setType('上班')"
+                    :class="newRecord.type === '上班' ? 'bg-emerald-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-sun text-base"></i> 上班
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="setType('下班')"
+                    :class="newRecord.type === '下班' ? 'bg-amber-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-moon text-base"></i> 下班
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="setType('上下班')"
+                    :class="newRecord.type === '上下班' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-arrows-left-right text-base"></i> 上下班
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="setType('其他')"
+                    :class="newRecord.type === '其他' ? 'bg-purple-600 text-white font-semibold shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    class="py-2.5 px-3 rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-clock text-base"></i> 其他
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="newRecord.type === '上班'">
+                <label class="block text-sm font-medium text-slate-700 mb-1">上班補登時間</label>
                 <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">下班時間</label>
-                <input type="time" v-model="newRecord.timeEnd" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+
+              <div v-else-if="newRecord.type === '下班'">
+                <label class="block text-sm font-medium text-slate-700 mb-1">下班補登時間</label>
+                <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
-            </div>
 
-            <div v-else-if="newRecord.type === '其他'">
-              <label class="block text-sm font-medium text-slate-700 mb-1">補登時間</label>
-              <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-            </div>
-
-            <!-- Notes input -->
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">原因或備註 (選填)</label>
-              <input type="text" v-model="newRecord.note" placeholder="例如：忘記刷卡、公出拜訪" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-            </div>
-
-            <button type="submit" :disabled="submitting" class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl shadow-md shadow-indigo-100 transition flex items-center justify-center gap-2">
-              <i class="ph-bold ph-check"></i> {{ submitting ? '同步中...' : '送出補登紀錄至雲端' }}
-            </button>
-          </form>
-        </div>
-
-        <!-- Recent records list -->
-        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
-            <span class="flex items-center gap-2">
-              <i class="ph-bold ph-clock-counter-clockwise text-indigo-600"></i> 近期紀錄列表
-            </span>
-            <span class="text-xs text-slate-400 font-normal">雲端共 {{ records.length }} 筆</span>
-          </h2>
-
-          <div v-if="records.length === 0" class="text-center py-12 text-slate-400 text-sm">
-            目前雲端尚未有任何補登紀錄，請從左側表單登記。
-          </div>
-
-          <div v-else class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-              <thead class="text-xs text-slate-400 border-b border-slate-100 pb-2 uppercase">
-                <tr>
-                  <th class="py-2">出勤日期與打卡</th>
-                  <th class="py-2">系統登錄時間</th>
-                  <th class="py-2">同仁</th>
-                  <th class="py-2">班別</th>
-                  <th class="py-2">備註</th>
-                  <th class="py-2 text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                <tr v-for="r in sortedRecords.slice(0, 8)" :key="r.id" class="hover:bg-slate-50/50">
-                  <td class="py-3 font-semibold text-slate-800">
-                    <div>{{ r.date }}</div>
-                    <div v-if="r.timeStr" class="text-xs font-mono font-normal text-indigo-600">{{ r.timeStr }}</div>
-                  </td>
-                  <td class="py-3 text-xs text-slate-500 font-mono">{{ r.createdAtDisplay }}</td>
-                  <td class="py-3">
-                    <div class="font-medium text-slate-800 flex items-center gap-1.5">
-                      {{ getMember(r.memberId)?.nameZh || '已刪除成員' }}
-                      <span v-if="getMember(r.memberId)?.status === 'inactive'" class="bg-slate-100 text-slate-500 text-[10px] px-1 rounded">離職</span>
-                    </div>
-                    <div class="text-xs text-slate-400">{{ getMember(r.memberId)?.nameEn }}</div>
-                  </td>
-                  <td class="py-3">
-                    <span :class="{
-                      'bg-emerald-50 text-emerald-700 border-emerald-200': r.type === '上班',
-                      'bg-amber-50 text-amber-700 border-amber-200': r.type === '下班',
-                      'bg-indigo-50 text-indigo-700 border-indigo-200': r.type === '上下班',
-                      'bg-purple-50 text-purple-700 border-purple-200': r.type === '其他'
-                    }" class="px-2.5 py-1 rounded-full text-xs font-semibold border inline-flex items-center gap-1">
-                      <i :class="{
-                        'ph-bold ph-sun': r.type === '上班',
-                        'ph-bold ph-moon': r.type === '下班',
-                        'ph-bold ph-arrows-left-right': r.type === '上下班',
-                        'ph-bold ph-clock': r.type === '其他'
-                      }"></i>
-                      {{ r.type }}
-                    </span>
-                  </td>
-                  <td class="py-3 text-slate-500 text-xs">{{ r.note || '-' }}</td>
-                  <td class="py-3 text-right">
-                    <button @click="deleteRecord(r.id)" class="text-rose-500 hover:text-rose-700 text-xs font-medium">刪除</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. Statistics and reports tab -->
-      <section v-if="currentTab === 'stats'" class="space-y-6">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <!-- Filter target member -->
-          <div class="w-full md:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-2">
-            <span class="text-sm font-semibold text-slate-600">統計對象：</span>
-            <select v-model="statsFilter.memberId" class="w-full sm:w-auto rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="ALL">🌐 全同仁統計 (全團隊)</option>
-              <option v-for="m in members" :key="m.id" :value="m.id">
-                👤 {{ m.nameZh }} ({{ m.nameEn }}) {{ m.status === 'inactive' ? '【已離職】' : '' }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Dimension switch buttons -->
-          <div class="flex items-center bg-slate-100 p-1 rounded-xl w-full sm:w-auto justify-center">
-            <button 
-              @click="statsFilter.rangeType = 'month'"
-              :class="statsFilter.rangeType === 'month' ? 'bg-white text-indigo-700 font-semibold shadow-sm' : 'text-slate-600'"
-              class="px-4 py-1.5 text-xs rounded-lg transition">月統計</button>
-            <button 
-              @click="statsFilter.rangeType = 'quarter'"
-              :class="statsFilter.rangeType === 'quarter' ? 'bg-white text-indigo-700 font-semibold shadow-sm' : 'text-slate-600'"
-              class="px-4 py-1.5 text-xs rounded-lg transition">季統計</button>
-            <button 
-              @click="statsFilter.rangeType = 'year'"
-              :class="statsFilter.rangeType === 'year' ? 'bg-white text-indigo-700 font-semibold shadow-sm' : 'text-slate-600'"
-              class="px-4 py-1.5 text-xs rounded-lg transition">年統計</button>
-          </div>
-
-          <!-- Date range pickers -->
-          <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-            <input 
-              v-if="statsFilter.rangeType === 'month'" 
-              type="month" 
-              v-model="statsFilter.selectedMonth" 
-              class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-slate-50 outline-none">
-            
-            <div v-if="statsFilter.rangeType === 'quarter'" class="flex gap-2">
-              <select v-model="statsFilter.selectedYear" class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-slate-50">
-                <option v-for="y in [2024, 2025, 2026, 2027]" :value="y">{{ y }} 年</option>
-              </select>
-              <select v-model="statsFilter.selectedQuarter" class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-slate-50">
-                <option value="1">第 1 季 (1-3月)</option>
-                <option value="2">第 2 季 (4-6月)</option>
-                <option value="3">第 3 季 (7-9月)</option>
-                <option value="4">第 4 季 (10-12月)</option>
-              </select>
-            </div>
-
-            <select v-if="statsFilter.rangeType === 'year'" v-model="statsFilter.selectedYear" class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-slate-50">
-              <option v-for="y in [2024, 2025, 2026, 2027]" :value="y">{{ y }} 年度</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Metric summary cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl">
-              <i class="ph-bold ph-calculator"></i>
-            </div>
-            <div>
-              <div class="text-xs text-slate-400 font-medium">總補登次數</div>
-              <div class="text-2xl font-bold text-slate-800">{{ filteredStats.total }} <span class="text-xs font-normal text-slate-400">次</span></div>
-            </div>
-          </div>
-
-          <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">
-              <i class="ph-bold ph-sun"></i>
-            </div>
-            <div>
-              <div class="text-xs text-slate-400 font-medium">上班補登 (含上下班)</div>
-              <div class="text-2xl font-bold text-emerald-700">{{ filteredStats.checkIn }} <span class="text-xs font-normal text-slate-400">次</span></div>
-            </div>
-          </div>
-
-          <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">
-              <i class="ph-bold ph-moon"></i>
-            </div>
-            <div>
-              <div class="text-xs text-slate-400 font-medium">下班補登 (含上下班)</div>
-              <div class="text-2xl font-bold text-amber-700">{{ filteredStats.checkOut }} <span class="text-xs font-normal text-slate-400">次</span></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Range detailed records table -->
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
-            <span>區間補登紀錄明細</span>
-            <span class="text-xs font-normal text-slate-400">共 {{ filteredStats.records.length }} 筆</span>
-          </h3>
-
-          <div v-if="filteredStats.records.length === 0" class="text-center py-10 text-slate-400 text-sm">
-            在此時間區間內沒有任何補登資料。
-          </div>
-
-          <div v-else class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-              <thead class="text-xs text-slate-400 border-b border-slate-100 pb-2">
-                <tr>
-                  <th class="py-2">出勤日期與打卡</th>
-                  <th class="py-2">系統登錄時間</th>
-                  <th class="py-2">同仁姓名</th>
-                  <th class="py-2">電子信箱</th>
-                  <th class="py-2">類別</th>
-                  <th class="py-2">原因/備註</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                <tr v-for="r in filteredStats.records" :key="r.id">
-                  <td class="py-3 font-semibold text-slate-800">
-                    <div>{{ r.date }}</div>
-                    <div v-if="r.timeStr" class="text-xs font-mono font-normal text-indigo-600">{{ r.timeStr }}</div>
-                  </td>
-                  <td class="py-3 text-xs text-slate-500 font-mono">{{ r.createdAtDisplay }}</td>
-                  <td class="py-3 font-semibold text-slate-700">
-                    <span class="flex items-center gap-1.5">
-                      {{ getMember(r.memberId)?.nameZh || '已刪除成員' }} ({{ getMember(r.memberId)?.nameEn }})
-                      <span v-if="getMember(r.memberId)?.status === 'inactive'" class="bg-slate-100 text-slate-500 text-[10px] px-1 rounded font-normal">離職</span>
-                    </span>
-                  </td>
-                  <td class="py-3 text-slate-500 text-xs">{{ getMember(r.memberId)?.email }}</td>
-                  <td class="py-3">
-                    <span :class="{
-                      'bg-emerald-50 text-emerald-700': r.type === '上班',
-                      'bg-amber-50 text-amber-700': r.type === '下班',
-                      'bg-indigo-50 text-indigo-700': r.type === '上下班',
-                      'bg-purple-50 text-purple-700': r.type === '其他'
-                    }" class="px-2 py-0.5 rounded-md text-xs font-semibold">
-                      {{ r.type }}
-                    </span>
-                  </td>
-                  <td class="py-3 text-slate-500 text-xs">{{ r.note || '-' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. Member management tab -->
-      <section v-if="currentTab === 'members'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <i class="ph-bold ph-user-plus text-indigo-600"></i> 新增同仁
-          </h2>
-          <form @submit.prevent="addMember" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">中文姓名</label>
-              <input type="text" v-model="newMember.nameZh" required placeholder="例如：王小明" class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">英文姓名</label>
-              <input type="text" v-model="newMember.nameEn" required placeholder="例如：Alex Wang" class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">電子信箱</label>
-              <input type="email" v-model="newMember.email" required placeholder="alex.wang@company.com" class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-            </div>
-            <button type="submit" :disabled="submitting" class="w-full bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition text-sm">
-              {{ submitting ? '同步中...' : '儲存至 Google 雲端' }}
-            </button>
-          </form>
-        </div>
-
-        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <span>團隊成員名單</span>
-              <span class="text-xs text-slate-400 font-normal">共 {{ members.length }} 位</span>
-            </h2>
-            <div class="flex bg-slate-100 p-1 rounded-lg text-xs">
-              <button 
-                type="button" 
-                @click="memberFilterTab = 'active'"
-                :class="memberFilterTab === 'active' ? 'bg-white text-indigo-700 font-bold shadow-sm' : 'text-slate-600'"
-                class="px-3 py-1 rounded-md transition">在職 ({{ activeMembers.length }})</button>
-              <button 
-                type="button" 
-                @click="memberFilterTab = 'inactive'"
-                :class="memberFilterTab === 'inactive' ? 'bg-white text-indigo-700 font-bold shadow-sm' : 'text-slate-600'"
-                class="px-3 py-1 rounded-md transition">已離職 ({{ inactiveMembers.length }})</button>
-            </div>
-          </div>
-
-          <div v-if="filteredMembers.length === 0" class="text-center py-10 text-slate-400 text-sm">
-            {{ memberFilterTab === 'active' ? '目前尚無在職員工。' : '目前尚無離職員工。' }}
-          </div>
-          <div v-else class="divide-y divide-slate-100">
-            <div v-for="m in filteredMembers" :key="m.id" class="py-3 flex items-center justify-between">
-              <div>
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  {{ m.nameZh }} <span class="text-slate-400 text-xs font-normal">({{ m.nameEn }})</span>
-                  <span v-if="m.status === 'inactive'" class="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded border border-slate-200">已離職</span>
+              <div v-else-if="newRecord.type === '上下班'" class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">上班時間</label>
+                  <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
-                <div class="text-xs text-slate-500">{{ m.email }}</div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1">下班時間</label>
+                  <input type="time" v-model="newRecord.timeEnd" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
               </div>
-              <div class="flex items-center gap-2">
-                <button 
-                  @click="toggleMemberStatus(m)" 
-                  :class="m.status === 'inactive' ? 'text-indigo-600 hover:text-indigo-800 bg-indigo-50 border-indigo-200' : 'text-amber-700 hover:text-amber-900 bg-amber-50 border-amber-200'"
-                  class="text-xs px-2.5 py-1 rounded-lg border font-medium transition">
-                  {{ m.status === 'inactive' ? '恢復在職' : '設為離職' }}
-                </button>
-                <button @click="deleteMember(m.id)" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1">完全刪除</button>
+
+              <div v-else-if="newRecord.type === '其他'">
+                <label class="block text-sm font-medium text-slate-700 mb-1">補登時間</label>
+                <input type="time" v-model="newRecord.time" required class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">原因或備註 (選填)</label>
+                <input type="text" v-model="newRecord.note" placeholder="例如：忘記刷卡、公出拜訪" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50 text-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+              </div>
+
+              <button type="submit" :disabled="submitting" class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl shadow-md shadow-indigo-100 transition flex items-center justify-center gap-2">
+                <i class="ph-bold ph-check"></i> {{ submitting ? '同步中...' : '送出補登紀錄至雲端' }}
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
+              <span class="flex items-center gap-2">
+                <i class="ph-bold ph-clock-counter-clockwise text-indigo-600"></i> 近期紀錄列表
+              </span>
+              <span class="text-xs text-slate-400 font-normal">雲端共 {{ records.length }} 筆</span>
+            </h2>
+
+            <div v-if="records.length === 0" class="text-center py-12 text-slate-400 text-sm">
+              目前雲端尚未有任何補登紀錄，請從左側表單登記。
+            </div>
+
+            <div v-else class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="text-xs text-slate-400 border-b border-slate-100 pb-2 uppercase">
+                  <tr>
+                    <th class="py-2">出勤日期與打卡</th>
+                    <th class="py-2">系統登錄時間</th>
+                    <th class="py-2">同仁</th>
+                    <th class="py-2">班別</th>
+                    <th class="py-2">備註</th>
+                    <th class="py-2 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="r in sortedRecords.slice(0, 8)" :key="r.id" class="hover:bg-slate-50/50">
+                    <td class="py-3 font-semibold text-slate-800">
+                      <div>{{ r.date }}</div>
+                      <div v-if="r.timeStr" class="text-xs font-mono font-normal text-indigo-600">{{ r.timeStr }}</div>
+                    </td>
+                    <td class="py-3 text-xs text-slate-500 font-mono">{{ r.createdAtDisplay }}</td>
+                    <td class="py-3">
+                      <div class="font-medium text-slate-800 flex items-center gap-1.5">
+                        {{ getMember(r.memberId)?.nameZh || '已刪除成員' }}
+                        <span v-if="getMember(r.memberId)?.status === 'inactive'" class="bg-slate-100 text-slate-500 text-[10px] px-1 rounded">離職</span>
+                      </div>
+                      <div class="text-xs text-slate-400">{{ getMember(r.memberId)?.nameEn }}</div>
+                    </td>
+                    <td class="py-3">
+                      <span :class="{
+                        'bg-emerald-50 text-emerald-700 border-emerald-200': r.type === '上班',
+                        'bg-amber-50 text-amber-700 border-amber-200': r.type === '下班',
+                        'bg-indigo-50 text-indigo-700 border-indigo-200': r.type === '上下班',
+                        'bg-purple-50 text-purple-700 border-purple-200': r.type === '其他'
+                      }" class="px-2.5 py-1 rounded-full text-xs font-semibold border inline-flex items-center gap-1">
+                        <i :class="{
+                          'ph-bold ph-sun': r.type === '上班',
+                          'ph-bold ph-moon': r.type === '下班',
+                          'ph-bold ph-arrows-left-right': r.type === '上下班',
+                          'ph-bold ph-clock': r.type === '其他'
+                        }"></i>
+                        {{ r.type }}
+                      </span>
+                    </td>
+                    <td class="py-3 text-slate-500 text-xs">{{ r.note || '-' }}</td>
+                    <td class="py-3 text-right">
+                      <button @click="deleteRecord(r.id)" class="text-rose-500 hover:text-rose-700 text-xs font-medium">刪除</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. 統計報表分頁 -->
+        <section v-if="currentTab === 'stats'" class="space-y-6">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div class="w-full md:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <span class="text-sm font-semibold text-slate-600">統計對象：</span>
+              <select v-model="statsFilter.memberId" class="w-full sm:w-auto rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="ALL">🌐 全同仁統計 (全團隊)</option>
+                <option v-for="m in members" :key="m.id" :value="m.id">
+                  👤 {{ m.nameZh }} ({{ m.nameEn }}) {{ m.status === 'inactive' ? '【已離職】' : '' }}
+                </option>
+              </select>
+            </div>
+
+            <div class="flex items-center bg-slate-100 p-1 rounded-xl w-full sm:w-auto justify-center">
+              <button 
+                @click="statsFilter.rangeType = 'month'"
+                :class="statsFilter.rangeType === 'month' ? 'bg-white text-indigo-700 font-semibold shadow-sm' : 'text-slate-600'"
+                class="px-4 py-1.5 text-xs rounded-lg transition">月統計</button>
+              <button 
+                @click="statsFilter.rangeType = 'quarter'"
+                :class="statsFilter.rangeType === 'quarter' ? 'bg-white text-indigo-700 font-semibold shadow-sm' : 'text-slate-600'"
+                class="px-4 py-1.5 text-xs rounded-lg transition">季統計</button>
+              <button 
+                @click="statsFilter.rangeType = 'year'"
+                :class="statsFilter.rangeType === 'year' ? 'bg-white text-indigo-700 font-semibold shadow-sm' : 'text-slate-600'"
+                class="px-4 py-1.5 text-xs rounded-lg transition">年統計</button>
+            </div>
+
+            <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+              <input 
+                v-if="statsFilter.rangeType === 'month'" 
+                type="month" 
+                v-model="statsFilter.selectedMonth" 
+                class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-slate-50 outline-none">
+              
+              <div v-if="statsFilter.rangeType === 'quarter'" class="flex gap-2">
+                <select v-model="statsFilter.selectedYear" class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-slate-50">
+                  <option v-for="y in [2024, 2025, 2026, 2027]" :value="y">{{ y }} 年</option>
+                </select>
+                <select v-model="statsFilter.selectedQuarter" class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-slate-50">
+                  <option value="1">第 1 季 (1-3月)</option>
+                  <option value="2">第 2 季 (4-6月)</option>
+                  <option value="3">第 3 季 (7-9月)</option>
+                  <option value="4">第 4 季 (10-12月)</option>
+                </select>
+              </div>
+
+              <select v-if="statsFilter.rangeType === 'year'" v-model="statsFilter.selectedYear" class="rounded-xl border border-slate-200 px-3 py-1.5 text-sm bg-slate-50">
+                <option v-for="y in [2024, 2025, 2026, 2027]" :value="y">{{ y }} 年度</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl">
+                <i class="ph-bold ph-calculator"></i>
+              </div>
+              <div>
+                <div class="text-xs text-slate-400 font-medium">總補登次數</div>
+                <div class="text-2xl font-bold text-slate-800">{{ filteredStats.total }} <span class="text-xs font-normal text-slate-400">次</span></div>
+              </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">
+                <i class="ph-bold ph-sun"></i>
+              </div>
+              <div>
+                <div class="text-xs text-slate-400 font-medium">上班補登 (含上下班)</div>
+                <div class="text-2xl font-bold text-emerald-700">{{ filteredStats.checkIn }} <span class="text-xs font-normal text-slate-400">次</span></div>
+              </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">
+                <i class="ph-bold ph-moon"></i>
+              </div>
+              <div>
+                <div class="text-xs text-slate-400 font-medium">下班補登 (含上下班)</div>
+                <div class="text-2xl font-bold text-amber-700">{{ filteredStats.checkOut }} <span class="text-xs font-normal text-slate-400">次</span></div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center justify-between">
+              <span>區間補登紀錄明細</span>
+              <span class="text-xs font-normal text-slate-400">共 {{ filteredStats.records.length }} 筆</span>
+            </h3>
+
+            <div v-if="filteredStats.records.length === 0" class="text-center py-10 text-slate-400 text-sm">
+              在此時間區間內沒有任何補登資料。
+            </div>
+
+            <div v-else class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="text-xs text-slate-400 border-b border-slate-100 pb-2">
+                  <tr>
+                    <th class="py-2">出勤日期與打卡</th>
+                    <th class="py-2">系統登錄時間</th>
+                    <th class="py-2">同仁姓名</th>
+                    <th class="py-2">電子信箱</th>
+                    <th class="py-2">類別</th>
+                    <th class="py-2">原因/備註</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="r in filteredStats.records" :key="r.id">
+                    <td class="py-3 font-semibold text-slate-800">
+                      <div>{{ r.date }}</div>
+                      <div v-if="r.timeStr" class="text-xs font-mono font-normal text-indigo-600">{{ r.timeStr }}</div>
+                    </td>
+                    <td class="py-3 text-xs text-slate-500 font-mono">{{ r.createdAtDisplay }}</td>
+                    <td class="py-3 font-semibold text-slate-700">
+                      <span class="flex items-center gap-1.5">
+                        {{ getMember(r.memberId)?.nameZh || '已刪除成員' }} ({{ getMember(r.memberId)?.nameEn }})
+                        <span v-if="getMember(r.memberId)?.status === 'inactive'" class="bg-slate-100 text-slate-500 text-[10px] px-1 rounded font-normal">離職</span>
+                      </span>
+                    </td>
+                    <td class="py-3 text-slate-500 text-xs">{{ getMember(r.memberId)?.email }}</td>
+                    <td class="py-3">
+                      <span :class="{
+                        'bg-emerald-50 text-emerald-700': r.type === '上班',
+                        'bg-amber-50 text-amber-700': r.type === '下班',
+                        'bg-indigo-50 text-indigo-700': r.type === '上下班',
+                        'bg-purple-50 text-purple-700': r.type === '其他'
+                      }" class="px-2 py-0.5 rounded-md text-xs font-semibold">
+                        {{ r.type }}
+                      </span>
+                    </td>
+                    <td class="py-3 text-slate-500 text-xs">{{ r.note || '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. 成員管理分頁 -->
+        <section v-if="currentTab === 'members'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <i class="ph-bold ph-user-plus text-indigo-600"></i> 新增同仁
+            </h2>
+            <form @submit.prevent="addMember" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">中文姓名</label>
+                <input type="text" v-model="newMember.nameZh" required placeholder="例如：王小明" class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">英文姓名</label>
+                <input type="text" v-model="newMember.nameEn" required placeholder="例如：Alex Wang" class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">電子信箱</label>
+                <input type="email" v-model="newMember.email" required placeholder="alex.wang@company.com" class="w-full rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <button type="submit" :disabled="submitting" class="w-full bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl transition text-sm">
+                {{ submitting ? '同步中...' : '儲存至 Google 雲端' }}
+              </button>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <span>團隊成員名單</span>
+                <span class="text-xs text-slate-400 font-normal">共 {{ members.length }} 位</span>
+              </h2>
+              <div class="flex bg-slate-100 p-1 rounded-lg text-xs">
+                <button 
+                  type="button" 
+                  @click="memberFilterTab = 'active'"
+                  :class="memberFilterTab === 'active' ? 'bg-white text-indigo-700 font-bold shadow-sm' : 'text-slate-600'"
+                  class="px-3 py-1 rounded-md transition">在職 ({{ activeMembers.length }})</button>
+                <button 
+                  type="button" 
+                  @click="memberFilterTab = 'inactive'"
+                  :class="memberFilterTab === 'inactive' ? 'bg-white text-indigo-700 font-bold shadow-sm' : 'text-slate-600'"
+                  class="px-3 py-1 rounded-md transition">已離職 ({{ inactiveMembers.length }})</button>
+              </div>
+            </div>
+
+            <div v-if="filteredMembers.length === 0" class="text-center py-10 text-slate-400 text-sm">
+              {{ memberFilterTab === 'active' ? '目前尚無在職員工。' : '目前尚無離職員工。' }}
+            </div>
+            <div v-else class="divide-y divide-slate-100">
+              <div v-for="m in filteredMembers" :key="m.id" class="py-3 flex items-center justify-between">
+                <div>
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    {{ m.nameZh }} <span class="text-slate-400 text-xs font-normal">({{ m.nameEn }})</span>
+                    <span v-if="m.status === 'inactive'" class="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded border border-slate-200">已離職</span>
+                  </div>
+                  <div class="text-xs text-slate-500">{{ m.email }}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button 
+                    @click="toggleMemberStatus(m)" 
+                    :class="m.status === 'inactive' ? 'text-indigo-600 hover:text-indigo-800 bg-indigo-50 border-indigo-200' : 'text-amber-700 hover:text-amber-900 bg-amber-50 border-amber-200'"
+                    class="text-xs px-2.5 py-1 rounded-lg border font-medium transition">
+                    {{ m.status === 'inactive' ? '恢復在職' : '設為離職' }}
+                  </button>
+                  <button @click="deleteMember(m.id)" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1">完全刪除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
 
   </div>
 
-  <!-- Firebase modules and Vue logic -->
+  <!-- Firebase 模組 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { 
+      getAuth, 
+      GoogleAuthProvider, 
+      signInWithPopup, 
+      signOut, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
     import { 
       getFirestore, 
       collection, 
@@ -465,7 +489,11 @@
       serverTimestamp 
     } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    // Firebase configuration credentials
+    // 可以在此列出允許登入的 Gmail 清單（若留空 [] 則只要是 Google 帳戶均可進入介面）
+    const ALLOWED_EMAILS = [
+      // "你的Google信箱@gmail.com"
+    ];
+
     const firebaseConfig = {
       apiKey: "AIzaSyAgK0oEQQU30yIibN9983MA_AhVuv7Ss_w",
       authDomain: "attendance-system-79158.firebaseapp.com",
@@ -477,12 +505,18 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
     const db = getFirestore(app);
 
     const { createApp, ref, computed, onMounted } = Vue;
 
     createApp({
       setup() {
+        const currentUser = ref(null);
+        const authLoading = ref(false);
+        const authError = ref('');
+
         const currentTab = ref('record');
         const memberFilterTab = ref('active');
         const loading = ref(true);
@@ -491,7 +525,6 @@
         const members = ref([]);
         const records = ref([]);
 
-        // Get local date string (yyyy-MM-dd)
         const getTodayStr = () => {
           const d = new Date();
           const Y = d.getFullYear();
@@ -500,7 +533,6 @@
           return `${Y}-${M}-${D}`;
         };
 
-        // Format timestamp utility (yyyy-MM-dd HH:mm)
         const formatDateTime = (ts) => {
           if (!ts) return '-';
           const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -513,7 +545,6 @@
           return `${Y}-${M}-${D} ${h}:${m}`;
         };
 
-        // Factory function for default record state
         const getDefaultRecord = () => ({
           memberId: '',
           date: getTodayStr(),
@@ -523,10 +554,8 @@
           note: ''
         });
 
-        // Current record form state
         const newRecord = ref(getDefaultRecord());
 
-        // Switch category and assign default times
         const setType = (type) => {
           newRecord.value.type = type;
           if (type === '上班') {
@@ -541,11 +570,7 @@
           }
         };
 
-        const newMember = ref({
-          nameZh: '',
-          nameEn: '',
-          email: ''
-        });
+        const newMember = ref({ nameZh: '', nameEn: '', email: '' });
 
         const now = new Date();
         const statsFilter = ref({
@@ -562,7 +587,42 @@
           return memberFilterTab.value === 'active' ? activeMembers.value : inactiveMembers.value;
         });
 
-        // Load data from Cloud Firestore
+        // Google 彈出視窗登入
+        const loginWithGoogle = async () => {
+          authError.value = '';
+          authLoading.value = true;
+          try {
+            const res = await signInWithPopup(auth, provider);
+            const email = res.user.email;
+            
+            // 前端白名單驗證（若有設定 ALLOWED_EMAILS）
+            if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(email)) {
+              await signOut(auth);
+              currentUser.value = null;
+              authError.value = `帳號 [${email}] 未獲得管理員授權存取。`;
+            }
+          } catch (err) {
+            console.error(err);
+            if (err.code !== 'auth/popup-closed-by-user') {
+              authError.value = '登入失敗：' + (err.message || '請確認網路與授權網域設定。');
+            }
+          } finally {
+            authLoading.value = false;
+          }
+        };
+
+        // 登出
+        const logout = async () => {
+          try {
+            await signOut(auth);
+            members.value = [];
+            records.value = [];
+          } catch (err) {
+            console.error(err);
+          }
+        };
+
+        // 載入資料庫
         const loadCloudData = async () => {
           loading.value = true;
           try {
@@ -586,7 +646,7 @@
             });
           } catch (err) {
             console.error("載入失敗：", err);
-            alert("雲端資料讀取失敗，請確認 Firebase 安全性規則。");
+            alert("雲端資料讀取失敗，請確認你的帳號是否在 Firebase 安全規則的授權名單中。");
           } finally {
             loading.value = false;
           }
@@ -598,7 +658,6 @@
           return [...records.value].sort((a, b) => new Date(b.date) - new Date(a.date));
         });
 
-        // Compute filtered statistics
         const filteredStats = computed(() => {
           const { memberId, rangeType, selectedMonth, selectedYear, selectedQuarter } = statsFilter.value;
 
@@ -621,7 +680,6 @@
             return true;
           });
 
-          // Count check-in and check-out occurrences (including both)
           const checkIn = filtered.filter(r => r.type === '上班' || r.type === '上下班').length;
           const checkOut = filtered.filter(r => r.type === '下班' || r.type === '上下班').length;
 
@@ -633,7 +691,6 @@
           };
         });
 
-        // Submit attendance record to Firestore
         const submitRecord = async () => {
           if (!newRecord.value.memberId) {
             alert('請先選擇同仁！');
@@ -667,7 +724,6 @@
               ...docData
             });
 
-            // Reset form back to default state
             newRecord.value = getDefaultRecord();
           } catch (err) {
             console.error(err);
@@ -735,10 +791,30 @@
         };
 
         onMounted(() => {
-          loadCloudData();
+          onAuthStateChanged(auth, (user) => {
+            if (user) {
+              if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(user.email)) {
+                currentUser.value = null;
+                authError.value = `帳號 [${user.email}] 未獲得管理員授權存取。`;
+                signOut(auth);
+                loading.value = false;
+                return;
+              }
+              currentUser.value = user;
+              loadCloudData();
+            } else {
+              currentUser.value = null;
+              loading.value = false;
+            }
+          });
         });
 
         return {
+          currentUser,
+          authLoading,
+          authError,
+          loginWithGoogle,
+          logout,
           currentTab,
           memberFilterTab,
           loading,
